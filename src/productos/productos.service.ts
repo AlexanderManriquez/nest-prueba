@@ -1,42 +1,38 @@
 import { Injectable } from '@nestjs/common';
-import { Producto } from './productos.interface';
+import { Repository } from 'typeorm';
 import { CrearProductoDTO } from './dto/crear-producto.dto';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Producto } from './entities/producto.entity';
 
 @Injectable()
 export class ProductosService {
-  private productos: Producto[] = [];
-  private idCounter = 1;
+  constructor(
+    @InjectRepository(Producto)
+    private readonly productoRepo: Repository<Producto>,
+  ) {}
 
-  findAll(): Producto[] {
-    return this.productos;
+  findAll(): Promise<Producto[]> {
+    return this.productoRepo.find();
   }
 
-  findOne(id: number): Producto | undefined {
-    return this.productos.find((p) => p.id === id);
+  findOne(id: number): Promise<Producto | null> {
+    return this.productoRepo.findOneBy({ id });
   }
 
-  create(producto: CrearProductoDTO): Producto {
-    const nuevoProducto: Producto = {
-      id: this.idCounter++,
-      ...producto,
-    };
-    this.productos.push(nuevoProducto);
-    return nuevoProducto;
+  create(dto: CrearProductoDTO): Promise<Producto> {
+    const producto = this.productoRepo.create(dto);
+    return this.productoRepo.save(producto);
   }
 
-  update(id: number, producto: CrearProductoDTO): Producto | undefined {
-    const index = this.productos.findIndex((p) => p.id === id);
-    if (index === -1) return undefined;
-
-    const productoActualizado: Producto = { id, ...producto };
-    this.productos[index] = productoActualizado;
-    return productoActualizado;
+  async update(id: number, dto: CrearProductoDTO): Promise<Producto | null> {
+    const producto = await this.productoRepo.findOneBy({ id });
+    if (!producto) return null;
+    Object.assign(producto, dto);
+    return this.productoRepo.save(producto);
   }
 
-  remove(id: number): boolean {
-    const index = this.productos.findIndex((p) => p.id === id);
-    if (index === -1) return false;
-    this.productos.splice(index, 1);
-    return true;
+  async remove(id: number): Promise<boolean> {
+    const result = await this.productoRepo.delete(id);
+    return (result.affected ?? 0) > 0;
   }
 }
