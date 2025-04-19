@@ -1,9 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { Producto } from './productos.interface';
+import { CrearProductoDTO } from './dto/crear-producto.dto';
 
 @Injectable()
 export class ProductosService {
   private productos: Producto[] = [];
+  private idCounter = 1;
 
   findAll(): Producto[] {
     return this.productos;
@@ -13,16 +15,22 @@ export class ProductosService {
     return this.productos.find((p) => p.id === id);
   }
 
-  create(producto: Producto): Producto {
-    this.productos.push(producto);
-    return producto;
+  create(producto: CrearProductoDTO): Producto {
+    const nuevoProducto: Producto = {
+      id: this.idCounter++,
+      ...producto,
+    };
+    this.productos.push(nuevoProducto);
+    return nuevoProducto;
   }
 
-  update(id: number, nuevoProducto: Producto): Producto | undefined {
+  update(id: number, producto: CrearProductoDTO): Producto | undefined {
     const index = this.productos.findIndex((p) => p.id === id);
     if (index === -1) return undefined;
-    this.productos[index] = nuevoProducto;
-    return nuevoProducto;
+
+    const productoActualizado: Producto = { id, ...producto };
+    this.productos[index] = productoActualizado;
+    return productoActualizado;
   }
 
   remove(id: number): boolean {
