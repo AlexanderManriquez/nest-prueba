@@ -4,6 +4,7 @@ import {
   Delete,
   Get,
   Param,
+  ParseIntPipe,
   Post,
   Put,
 } from '@nestjs/common';
@@ -20,7 +21,7 @@ export class ProductosController {
   }
 
   @Get(':id')
-  findOne(@Param('id') id: number) {
+  findOne(@Param('id', ParseIntPipe) id: number) {
     return this.productosService.findOne(+id);
   }
 
@@ -30,12 +31,15 @@ export class ProductosController {
   }
 
   @Put(':id')
-  update(@Param('id') id: number, @Body() producto: CrearProductoDTO) {
+  update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() producto: CrearProductoDTO,
+  ) {
     return this.productosService.update(+id, producto);
   }
 
   @Delete(':id')
-  remove(@Param('id') id: number) {
+  remove(@Param('id', ParseIntPipe) id: number) {
     return this.productosService.remove(+id);
   }
 }

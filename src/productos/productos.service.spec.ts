@@ -6,7 +6,7 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 
 describe('ProductosService', () => {
   let service: ProductosService;
-  let repo: Repository<Producto>;
+  let repo: jest.Mocked<Repository<Producto>>;
 
   const mockProducto = { id: 1, nombre: 'Test', precio: 100 };
 
@@ -29,62 +29,102 @@ describe('ProductosService', () => {
     }).compile();
 
     service = module.get<ProductosService>(ProductosService);
-    repo = module.get<Repository<Producto>>(getRepositoryToken(Producto));
+    repo = module.get(getRepositoryToken(Producto));
   });
 
-  it('should be defined', () => {
-    expect(service).toBeDefined();
+  describe('create', () => {
+    it('should create a product', async () => {
+      const dto = { nombre: 'Nuevo', precio: 200 };
+      const created = { id: 2, ...dto };
+
+      repo.create.mockReturnValue(created);
+      repo.save.mockResolvedValue(created);
+
+      const result = await service.create(dto);
+
+      expect(result).toEqual(created);
+      // eslint-disable-next-line @typescript-eslint/unbound-method
+      expect(repo.create).toHaveBeenCalledWith(dto);
+      // eslint-disable-next-line @typescript-eslint/unbound-method
+      expect(repo.save).toHaveBeenCalledWith(created);
+    });
   });
 
-  it('should create a product', async () => {
-    const dto = { nombre: 'Nuevo', precio: 200 };
-    const created = { id: 2, ...dto };
+  describe('findAll', () => {
+    it('should return all products', async () => {
+      repo.find.mockResolvedValue([mockProducto]);
 
-    jest.spyOn(repo, 'create').mockReturnValue(created as any);
-    jest.spyOn(repo, 'save').mockResolvedValue(created as any);
+      const result = await service.findAll();
 
-    const result = await service.create(dto);
-    expect(result).toEqual(created);
+      expect(result).toEqual([mockProducto]);
+      // eslint-disable-next-line @typescript-eslint/unbound-method
+      expect(repo.find).toHaveBeenCalledTimes(1);
+    });
   });
 
-  it('should return all products', async () => {
-    jest.spyOn(repo, 'find').mockResolvedValue([mockProducto]);
-    const result = await service.findAll();
-    expect(result).toEqual([mockProducto]);
+  describe('findOne', () => {
+    it('should return a product by id', async () => {
+      repo.findOneBy.mockResolvedValue(mockProducto);
+
+      const result = await service.findOne(1);
+
+      expect(result).toEqual(mockProducto);
+      // eslint-disable-next-line @typescript-eslint/unbound-method
+      expect(repo.findOneBy).toHaveBeenCalledWith({ id: 1 });
+    });
+
+    it('should return null if not found', async () => {
+      repo.findOneBy.mockResolvedValue(null);
+
+      const result = await service.findOne(999);
+
+      expect(result).toBeNull();
+    });
   });
 
-  it('should return a product by ID', async () => {
-    jest.spyOn(repo, 'findOneBy').mockResolvedValue(mockProducto);
-    const result = await service.findOne(1);
-    expect(result).toEqual(mockProducto);
+  describe('update', () => {
+    it('should update a product', async () => {
+      const dto = { nombre: 'Actualizado', precio: 300 };
+      const found = { id: 1, nombre: 'Antiguo', precio: 150 };
+
+      repo.findOneBy.mockResolvedValue(found);
+      repo.save.mockResolvedValue({ ...found, ...dto });
+
+      const result = await service.update(1, dto);
+
+      expect(result).toEqual({ id: 1, ...dto });
+      // eslint-disable-next-line @typescript-eslint/unbound-method
+      expect(repo.findOneBy).toHaveBeenCalledWith({ id: 1 });
+      // eslint-disable-next-line @typescript-eslint/unbound-method
+      expect(repo.save).toHaveBeenCalledWith({ ...found, ...dto });
+    });
+
+    it('should return null if product not found', async () => {
+      repo.findOneBy.mockResolvedValue(null);
+
+      const result = await service.update(999, { nombre: 'Nada', precio: 0 });
+
+      expect(result).toBeNull();
+    });
   });
 
-  it('should update a product', async () => {
-    const updated = { nombre: 'Test', precio: 100 };
-    const mockProducto = { id: 1, ...updated };
+  describe('remove', () => {
+    it('should delete a product', async () => {
+      repo.delete.mockResolvedValue({ affected: 1 } as any);
 
-    jest.spyOn(repo, 'findOneBy').mockResolvedValue(mockProducto); // 💡 clave
-    jest.spyOn(repo, 'save').mockResolvedValue(mockProducto);
+      const result = await service.remove(1);
 
-    const result = await service.update(1, updated);
-    expect(result).toEqual(mockProducto);
-  });
+      expect(result).toBe(true);
+      // eslint-disable-next-line @typescript-eslint/unbound-method
+      expect(repo.delete).toHaveBeenCalledWith(1);
+    });
 
-  it('should return false if update fails', async () => {
-    jest.spyOn(repo, 'update').mockResolvedValue({ affected: 0 } as any);
-    const result = await service.update(999, { nombre: 'Fake', precio: 0 });
-    expect(result).toBe(null);
-  });
+    it('should return false if delete fails', async () => {
+      repo.delete.mockResolvedValue({ affected: 0 } as any);
 
-  it('should delete a product', async () => {
-    jest.spyOn(repo, 'delete').mockResolvedValue({ affected: 1 } as any);
-    const result = await service.remove(1);
-    expect(result).toBe(true);
-  });
+      const result = await service.remove(999);
 
-  it('should return false if delete fails', async () => {
-    jest.spyOn(repo, 'delete').mockResolvedValue({ affected: 0 } as any);
-    const result = await service.remove(999);
-    expect(result).toBe(false);
+      expect(result).toBe(false);
+    });
   });
 });
